@@ -136,16 +136,15 @@ const createRun =
         args,
       );
 
-      installApp(
+      installApp({
         buildOutput,
         xcodeProject,
         mode,
         scheme,
-        args.target,
-        undefined,
-        args.binaryPath,
-        'macos',
-      );
+        target: args.target,
+        binaryPath: args.binaryPath,
+        platform: 'macos',
+      });
 
       return;
     }

@@ -1,34 +1,15 @@
 import {CLIError} from '@react-native-community/cli-tools';
 import path from 'path';
-import {getPropertyFromBuildSettings} from './getPropertyFromBuildSettings';
+import {ApplePlatform} from '../../types';
 
 export async function getBuildPath(
-  buildSettings: string,
-  scheme: string,
-  target: string | undefined,
-  platform: string = 'ios',
+  buildSettings: any,
+  platform: ApplePlatform = 'ios',
   isCatalyst: boolean = false,
 ) {
-  const targetBuildDir = getPropertyFromBuildSettings(
-    buildSettings,
-    scheme,
-    'TARGET_BUILD_DIR',
-    target,
-  );
-
-  const executableFolderPath = getPropertyFromBuildSettings(
-    buildSettings,
-    scheme,
-    'EXECUTABLE_FOLDER_PATH',
-    target,
-  );
-
-  const fullProductName = getPropertyFromBuildSettings(
-    buildSettings,
-    scheme,
-    'FULL_PRODUCT_NAME',
-    target,
-  );
+  const targetBuildDir = buildSettings.TARGET_BUILD_DIR;
+  const executableFolderPath = buildSettings.EXECUTABLE_FOLDER_PATH;
+  const fullProductName = buildSettings.FULL_PRODUCT_NAME;
 
   if (!targetBuildDir) {
     throw new CLIError('Failed to get the target build directory.');

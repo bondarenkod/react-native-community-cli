@@ -53,13 +53,7 @@ export async function runOnDevice(
       scheme,
     );
 
-    const appPath = await getBuildPath(
-      buildSettings,
-      scheme,
-      args.target,
-      platform,
-      true,
-    );
+    const appPath = await getBuildPath(buildSettings, platform, true);
     const appProcess = child_process.spawn(`${appPath}/${scheme}`, [], {
       detached: true,
       stdio: 'ignore',
@@ -84,12 +78,7 @@ export async function runOnDevice(
         scheme,
       );
 
-      appPath = await getBuildPath(
-        buildSettings,
-        scheme,
-        args.target,
-        platform,
-      );
+      appPath = await getBuildPath(buildSettings, platform);
     } else {
       appPath = args.binaryPath;
     }

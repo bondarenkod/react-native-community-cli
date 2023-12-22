@@ -1,5 +1,6 @@
-import {CLIError} from '@react-native-community/cli-tools';
+import {CLIError, logger} from '@react-native-community/cli-tools';
 import {IOSProjectInfo} from '@react-native-community/cli-types';
+import chalk from 'chalk';
 import child_process from 'child_process';
 
 export async function getBuildSettings(
@@ -7,6 +8,7 @@ export async function getBuildSettings(
   mode: string,
   buildOutput: string,
   scheme: string,
+  target?: string,
 ) {
   const buildSettings = child_process.execFileSync(
     'xcodebuild',
@@ -25,7 +27,37 @@ export async function getBuildSettings(
     {encoding: 'utf8'},
   );
 
-  return buildSettings;
+  const settings = JSON.parse(buildSettings);
+
+  const targets = settings.map(
+    ({target: settingsTarget}: any) => settingsTarget,
+  );
+
+  let selectedTarget = targets[0];
+
+  if (target) {
+    if (!targets.includes(target)) {
+      logger.info(
+        `Target ${chalk.bold(target)} not found for scheme ${chalk.bold(
+          scheme,
+        )}, automatically selected target ${chalk.bold(selectedTarget)}`,
+      );
+    } else {
+      selectedTarget = target;
+    }
+  }
+
+  // Find app in all building settings - look for WRAPPER_EXTENSION: 'app',
+  const targetIndex = targets.indexOf(selectedTarget);
+  const targetSettings = settings[targetIndex].buildSettings;
+
+  const wrapperExtension = targetSettings.WRAPPER_EXTENSION;
+
+  if (wrapperExtension === 'app') {
+    return settings[targetIndex].buildSettings;
+  }
+
+  return null;
 }
 
 function getPlatformName(buildOutput: string) {

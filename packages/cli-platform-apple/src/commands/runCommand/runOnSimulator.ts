@@ -15,6 +15,8 @@ export async function runOnSimulator(
   args: FlagsT,
   simulator: Device,
 ) {
+  const {binaryPath, target} = args;
+
   /**
    * Booting simulator through `xcrun simctl boot` will boot it in the `headless` mode
    * (running in the background).
@@ -42,7 +44,7 @@ export async function runOnSimulator(
   }
 
   let buildOutput;
-  if (!args.binaryPath) {
+  if (!binaryPath) {
     buildOutput = await buildProject(
       xcodeProject,
       platform,
@@ -53,15 +55,15 @@ export async function runOnSimulator(
     );
   }
 
-  installApp(
+  installApp({
     buildOutput,
     xcodeProject,
     mode,
     scheme,
-    args.target,
-    simulator.udid,
-    args.binaryPath,
-  );
+    target,
+    udid: simulator.udid,
+    binaryPath,
+  });
 }
 
 function bootSimulator(selectedSimulator: Device) {

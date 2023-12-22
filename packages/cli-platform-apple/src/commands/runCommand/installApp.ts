@@ -4,19 +4,42 @@ import {IOSProjectInfo} from '@react-native-community/cli-types';
 import chalk from 'chalk';
 import {getBuildPath} from './getBuildPath';
 import {getBuildSettings} from './getBuildSettings';
-import {getPropertyFromBuildSettings} from './getPropertyFromBuildSettings';
 import path from 'path';
+import {ApplePlatform} from '../../types';
 
-export default async function installApp(
-  buildOutput: any,
-  xcodeProject: IOSProjectInfo,
-  mode: string,
-  scheme: string,
-  target?: string,
-  udid?: string,
-  binaryPath?: string,
-  platform?: string,
+function handleLaunchResult(
+  success: boolean,
+  errorMessage: string,
+  errorDetails = '',
 ) {
+  if (success) {
+    logger.success('Successfully launched the app');
+  } else {
+    logger.error(errorMessage, errorDetails);
+  }
+}
+
+type Options = {
+  buildOutput: any;
+  xcodeProject: IOSProjectInfo;
+  mode: string;
+  scheme: string;
+  target?: string;
+  udid?: string;
+  binaryPath?: string;
+  platform?: ApplePlatform;
+};
+
+export default async function installApp({
+  buildOutput,
+  xcodeProject,
+  mode,
+  scheme,
+  target,
+  udid,
+  binaryPath,
+  platform,
+}: Options) {
   let appPath = binaryPath;
 
   const buildSettings = await getBuildSettings(
@@ -24,25 +47,15 @@ export default async function installApp(
     mode,
     buildOutput,
     scheme,
+    target,
   );
 
   if (!appPath) {
-    appPath = await getBuildPath(buildSettings, scheme, target, platform);
+    appPath = await getBuildPath(buildSettings, platform);
   }
 
-  const targetBuildDir = getPropertyFromBuildSettings(
-    buildSettings,
-    scheme,
-    'TARGET_BUILD_DIR',
-    target,
-  );
-
-  const infoPlistPath = getPropertyFromBuildSettings(
-    buildSettings,
-    scheme,
-    'INFOPLIST_PATH',
-    target,
-  );
+  const targetBuildDir = buildSettings.TARGET_BUILD_DIR;
+  const infoPlistPath = buildSettings.INFOPLIST_PATH;
 
   if (!infoPlistPath) {
     throw new CLIError('Failed to find Info.plist');
@@ -73,18 +86,6 @@ export default async function installApp(
     .trim();
 
   logger.info(`Launching "${chalk.bold(bundleID)}"`);
-
-  function handleLaunchResult(
-    success: boolean,
-    errorMessage: string,
-    errorDetails = '',
-  ) {
-    if (success) {
-      logger.success('Successfully launched the app');
-    } else {
-      logger.error(errorMessage, errorDetails);
-    }
-  }
 
   if (platform === 'macos') {
     child_process.exec(
