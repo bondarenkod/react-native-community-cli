@@ -1,13 +1,11 @@
 import child_process from 'child_process';
 import {IOSProjectInfo} from '@react-native-community/cli-types';
-import path from 'path';
 import {logger} from '@react-native-community/cli-tools';
-import chalk from 'chalk';
 import {ApplePlatform, Device} from '../../types';
 import {buildProject} from '../buildCommand/buildProject';
 import {formattedDeviceName} from './matchingDevice';
-import {getBuildPath} from './getBuildPath';
 import {FlagsT} from './createRun';
+import installApp from './installApp';
 
 export async function runOnSimulator(
   xcodeProject: IOSProjectInfo,
@@ -43,7 +41,7 @@ export async function runOnSimulator(
     bootSimulator(simulator);
   }
 
-  let buildOutput, appPath;
+  let buildOutput;
   if (!args.binaryPath) {
     buildOutput = await buildProject(
       xcodeProject,
@@ -53,51 +51,17 @@ export async function runOnSimulator(
       scheme,
       args,
     );
-
-    appPath = await getBuildPath(
-      xcodeProject,
-      mode,
-      buildOutput,
-      scheme,
-      args.target,
-    );
-  } else {
-    appPath = args.binaryPath;
   }
 
-  logger.info(`Installing "${chalk.bold(appPath)} on ${simulator.name}"`);
-
-  child_process.spawnSync(
-    'xcrun',
-    ['simctl', 'install', simulator.udid, appPath],
-    {stdio: 'inherit'},
-  );
-
-  const bundleID = child_process
-    .execFileSync(
-      '/usr/libexec/PlistBuddy',
-      ['-c', 'Print:CFBundleIdentifier', path.join(appPath, 'Info.plist')],
-      {encoding: 'utf8'},
-    )
-    .trim();
-
-  logger.info(`Launching "${chalk.bold(bundleID)}"`);
-
-  const result = child_process.spawnSync('xcrun', [
-    'simctl',
-    'launch',
+  installApp(
+    buildOutput,
+    xcodeProject,
+    mode,
+    scheme,
+    args.target,
     simulator.udid,
-    bundleID,
-  ]);
-
-  if (result.status === 0) {
-    logger.success('Successfully launched the app on the simulator');
-  } else {
-    logger.error(
-      'Failed to launch the app on simulator',
-      result.stderr.toString(),
-    );
-  }
+    args.binaryPath,
+  );
 }
 
 function bootSimulator(selectedSimulator: Device) {

@@ -1,36 +1,32 @@
-import child_process from 'child_process';
-import {IOSProjectInfo} from '@react-native-community/cli-types';
-import {CLIError, logger} from '@react-native-community/cli-tools';
-import chalk from 'chalk';
+import {CLIError} from '@react-native-community/cli-tools';
+import path from 'path';
+import {getPropertyFromBuildSettings} from './getPropertyFromBuildSettings';
 
 export async function getBuildPath(
-  xcodeProject: IOSProjectInfo,
-  mode: string,
-  buildOutput: string,
+  buildSettings: string,
   scheme: string,
   target: string | undefined,
+  platform: string = 'ios',
   isCatalyst: boolean = false,
 ) {
-  const buildSettings = child_process.execFileSync(
-    'xcodebuild',
-    [
-      xcodeProject.isWorkspace ? '-workspace' : '-project',
-      xcodeProject.name,
-      '-scheme',
-      scheme,
-      '-sdk',
-      getPlatformName(buildOutput),
-      '-configuration',
-      mode,
-      '-showBuildSettings',
-      '-json',
-    ],
-    {encoding: 'utf8'},
-  );
-
-  const {targetBuildDir, executableFolderPath} = await getTargetPaths(
+  const targetBuildDir = getPropertyFromBuildSettings(
     buildSettings,
     scheme,
+    'TARGET_BUILD_DIR',
+    target,
+  );
+
+  const executableFolderPath = getPropertyFromBuildSettings(
+    buildSettings,
+    scheme,
+    'EXECUTABLE_FOLDER_PATH',
+    target,
+  );
+
+  const fullProductName = getPropertyFromBuildSettings(
+    buildSettings,
+    scheme,
+    'FULL_PRODUCT_NAME',
     target,
   );
 
@@ -42,63 +38,15 @@ export async function getBuildPath(
     throw new CLIError('Failed to get the app name.');
   }
 
-  return `${targetBuildDir}${
-    isCatalyst ? '-maccatalyst' : ''
-  }/${executableFolderPath}`;
-}
-
-async function getTargetPaths(
-  buildSettings: string,
-  scheme: string,
-  target: string | undefined,
-) {
-  const settings = JSON.parse(buildSettings);
-
-  const targets = settings.map(
-    ({target: settingsTarget}: any) => settingsTarget,
-  );
-
-  let selectedTarget = targets[0];
-
-  if (target) {
-    if (!targets.includes(target)) {
-      logger.info(
-        `Target ${chalk.bold(target)} not found for scheme ${chalk.bold(
-          scheme,
-        )}, automatically selected target ${chalk.bold(selectedTarget)}`,
-      );
-    } else {
-      selectedTarget = target;
-    }
+  if (!fullProductName) {
+    throw new CLIError('Failed to get product name.');
   }
 
-  // Find app in all building settings - look for WRAPPER_EXTENSION: 'app',
-
-  const targetIndex = targets.indexOf(selectedTarget);
-
-  const wrapperExtension =
-    settings[targetIndex].buildSettings.WRAPPER_EXTENSION;
-
-  if (wrapperExtension === 'app') {
-    return {
-      targetBuildDir: settings[targetIndex].buildSettings.TARGET_BUILD_DIR,
-      executableFolderPath:
-        settings[targetIndex].buildSettings.EXECUTABLE_FOLDER_PATH,
-    };
+  if (platform === 'macos') {
+    return path.join(targetBuildDir, fullProductName);
+  } else if (isCatalyst) {
+    return path.join(targetBuildDir, '-maccatalyst', executableFolderPath);
+  } else {
+    return path.join(targetBuildDir, executableFolderPath);
   }
-
-  return {};
-}
-
-function getPlatformName(buildOutput: string) {
-  // Xcode can sometimes escape `=` with a backslash or put the value in quotes
-  const platformNameMatch = /export PLATFORM_NAME\\?="?(\w+)"?$/m.exec(
-    buildOutput,
-  );
-  if (!platformNameMatch) {
-    throw new CLIError(
-      'Couldn\'t find "PLATFORM_NAME" variable in xcodebuild output. Please report this issue and run your project with Xcode instead.',
-    );
-  }
-  return platformNameMatch[1];
 }
