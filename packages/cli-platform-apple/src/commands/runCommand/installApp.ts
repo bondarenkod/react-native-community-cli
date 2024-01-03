@@ -73,28 +73,27 @@ export default async function installApp({
     });
   }
 
-  const bundleID = child_process
-    .execFileSync(
-      '/usr/libexec/PlistBuddy',
-      [
-        '-c',
-        'Print:CFBundleIdentifier',
-        path.join(targetBuildDir, infoPlistPath),
-      ],
-      {encoding: 'utf8'},
-    )
-    .trim();
-
-  logger.info(`Launching "${chalk.bold(bundleID)}"`);
-
   if (platform === 'macos') {
-    child_process.exec(
-      `open -b ${bundleID} -a "${appPath}"`,
-      (error, _, stderr) => {
-        handleLaunchResult(!error, 'Failed to launch the app', stderr);
-      },
-    );
+    logger.info(`Launching "${chalk.bold(appPath)}"`);
+
+    child_process.exec(`open "${appPath}"`, (error, _, stderr) => {
+      handleLaunchResult(!error, 'Failed to launch the app', stderr);
+    });
   } else if (udid) {
+    const bundleID = child_process
+      .execFileSync(
+        '/usr/libexec/PlistBuddy',
+        [
+          '-c',
+          'Print:CFBundleIdentifier',
+          path.join(targetBuildDir, infoPlistPath),
+        ],
+        {encoding: 'utf8'},
+      )
+      .trim();
+
+    logger.info(`Launching "${chalk.bold(bundleID)}"`);
+
     let result = child_process.spawnSync('xcrun', [
       'simctl',
       'launch',

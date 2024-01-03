@@ -23,10 +23,10 @@ export async function getBuildPath(
     throw new CLIError('Failed to get product name.');
   }
 
-  if (platform === 'macos') {
-    return path.join(targetBuildDir, fullProductName);
-  } else if (isCatalyst) {
+  if (isCatalyst) {
     return path.join(targetBuildDir, '-maccatalyst', executableFolderPath);
+  } else if (platform === 'macos') {
+    return path.join(targetBuildDir, fullProductName);
   } else {
     return path.join(targetBuildDir, executableFolderPath);
   }
