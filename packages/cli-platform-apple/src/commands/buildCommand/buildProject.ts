@@ -56,7 +56,11 @@ export function buildProject(
     ];
 
     if (args.extraParams) {
-      xcodebuildArgs.push(...args.extraParams);
+      // parse the --extra-params value and add it to the xcodebuildArgs
+      const parsedArgs = parseExtraParams(JSON.stringify(args.extraParams));
+      if (parsedArgs.length > 0) {
+        xcodebuildArgs.push(...parsedArgs);
+      }
     }
 
     const loader = getLoader();
@@ -184,4 +188,71 @@ function getProcessOptions<T extends BuildFlags>(
   return {
     env: process.env,
   };
+}
+
+// This function parses the extra params passed to the build command
+// and returns an array of strings that can be passed to xcodebuild
+// as arguments.
+// The general format of the input string is:
+// "key1=value1 key2='value 2' --key3 value3" where delimiters are spaces,
+// and values can be wrapped in single quotes especially if they contain spaces.
+// The function will split the string into key/value pairs if possible
+// in the given example, the result will be:
+// ['key1=value1', 'key2=value 2', '--key3', 'value3']
+function parseExtraParams(input: string | undefined): string[] {
+  if (logger.isVerbose()) {
+    logger.info(`parsing extra args for xcodebuild: ${chalk.dim(input)}`);
+  }
+
+  let result: Array<string> = [];
+
+  if (!input) {
+    if (logger.isVerbose()) {
+      logger.info('input args variable is empty.');
+    }
+    return result;
+  }
+
+  let buffer = '';
+  let isInsideQuotes = false;
+
+  for (let i = 0; i < input.length; i++) {
+    const char = input[i];
+
+    if (char === "'") {
+      // Toggle whether we're inside quotes
+      isInsideQuotes = !isInsideQuotes;
+    } else if (char === ' ' && !isInsideQuotes) {
+      // If we encounter a space and we're not inside quotes, we've reached the end of a key/value pair
+      if (buffer.length > 0) {
+        result.push(buffer);
+        buffer = '';
+      }
+    } else {
+      // Otherwise, add the character to the buffer
+      buffer += char;
+    }
+  }
+
+  // Add the last buffered key/value pair to the result
+  if (buffer.length > 0) {
+    result.push(buffer);
+  }
+  if (logger.isVerbose()) {
+    logger.info('found the next extra args:');
+    logger.info('---------------------------------------------------');
+
+    result.forEach((pair) => {
+      // Split the pair into key and value
+      const [key, value] = pair.split('=');
+      // Check if value is undefined and print accordingly
+      if (value === undefined || value.trim() === '') {
+        logger.info(`${chalk.dim(`${key}`)}`);
+      } else {
+        logger.info(`${chalk.dim(`${key}: ${value}`)}`);
+      }
+    });
+    logger.info('---------------------------------------------------');
+  }
+  return result;
 }
