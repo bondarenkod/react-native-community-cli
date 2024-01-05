@@ -45,7 +45,6 @@ export const getBuildOptions = ({platformName}: BuilderCommand) => {
     {
       name: '--extra-params <string>',
       description: 'Custom params that will be passed to xcodebuild command.',
-      parse: (val: string) => val.split(' '),
     },
     {
       name: '--target <string>',
